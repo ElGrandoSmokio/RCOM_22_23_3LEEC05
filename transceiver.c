@@ -7,14 +7,15 @@
 #include <string.h>
 
 #define BAUDRATE B38400
+#define MODEMDEVICE "/dev/ttyS1"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
 
-int main(int argc, char** argv) {
+volatile int STOP=FALSE;
 
-    char buf[255];
-    ssize_t bytesRead;
+int main(int argc, char** argv)
+{
     struct termios oldtio,newtio;
 
     if (argc < 2) {
@@ -58,26 +59,36 @@ int main(int argc, char** argv) {
 
     printf("New termios structure set\n");
 
-    printf("Reading from serial port...\n");
-    while (1) {
-
-        bzero(buf, sizeof(buf));
-        bytesRead = read(fd, buf, sizeof(buf));
-        if (bytesRead > 0) {
-            printf("Received: %s\n", buf);
-        } else if (bytesRead == 0) {
-            printf("No data received\n");
-        } else {
-            perror("Failed to read from serial port");
-            return 1;
-        }
-        
-        printf("BUFFER: %s\n", buf);
-        write(fd, buf, strlen(buf));
-        printf("Returned: %s\n", buf);
-        sleep(0.3);
-    }
     
+    
+    
+    char bufferWrite[255];
+    char bufferRead[255];
+    ssize_t num_bytes, bytesRead;
+    int i=0;
+
+    while (1) {
+    
+        gets(bufferWrite);
+        printf("Sent: %s\n", bufferWrite);
+        num_bytes = write(fd, bufferWrite, strlen(bufferWrite));
+        if (num_bytes == -1) {
+            perror("Error writing to serial port");
+            close(fd);
+            exit(1);
+        }
+        printf("Wrote %ld bytes to serial port.\n", num_bytes);
+        bzero(bufferRead, sizeof(bufferRead));
+        printf("Reading from serial port...\n");
+        read(fd, bufferRead, sizeof(bufferRead));
+        printf("Read:%s\n", bufferRead);
+  
+    }
+
+    if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+        perror("tcsetattr");
+        exit(-1);
+    }
 
     close(fd);
     return 0;
